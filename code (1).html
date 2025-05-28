@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sod 激波管问题精确解</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+            line-height: 1.6;
+            margin: 20px;
+            background-color: #f8f9fa;
+            color: #212529;
+        }
+        h1, h2, h3 {
+            color: #007bff;
+            border-bottom: 1px solid #dee2e6;
+            padding-bottom: 0.3em;
+        }
+        h1 { font-size: 2em; }
+        h2 { font-size: 1.75em; margin-top: 1.5em; }
+        h3 { font-size: 1.5em; margin-top: 1em; }
+        p { margin-bottom: 1em; }
+        code, pre {
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+            background-color: #e9ecef;
+            padding: 0.2em 0.4em;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
+        pre {
+            padding: 1em;
+            overflow: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 1em;
+        }
+        th, td {
+            border: 1px solid #dee2e6;
+            padding: 0.5em;
+            text-align: left;
+        }
+        th {
+            background-color: #007bff;
+            color: white;
+        }
+        .container {
+            max-width: 900px;
+            margin: auto;
+            background-color: #ffffff;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            border-radius: 8px;
+        }
+        .math-var { font-style: italic; }
+        .vector { font-weight: bold; }
+    </style>
+</head>
+<body>
+<div class="container">
+
+<h1>Sod 激波管问题精确解</h1>
+
+<p>求解一维欧拉方程：</p>
+<p style="text-align:center;">
+    &part;<span class="vector">U</span> / &part;<span class="math-var">t</span> + &part;<span class="vector">f(U)</span> / &part;<span class="math-var">x</span> = 0
+</p>
+<p>其中，守恒变量 <span class="vector">U</span> 和通量 <span class="vector">f(U)</span> 定义为：</p>
+<pre>
+<span class="vector">U</span> = [ &rho; ]      <span class="vector">f(U)</span> = [   &rho;<span class="math-var">u</span>    ]
+    [ &rho;<span class="math-var">u</span> ]             [ &rho;<span class="math-var">u</span><sup>2</sup> + <span class="math-var">p</span> ]
+    [  <span class="math-var">E</span>  ]             [ <span class="math-var">u</span>(<span class="math-var">E</span>+<span class="math-var">p</span>) ]
+</pre>
+<p>总能量 <span class="math-var">E</span> 定义为：</p>
+<p style="text-align:center;">
+    <span class="math-var">E</span> = &rho;<span class="math-var">e</span> = &rho;(<span class="math-var">C<sub>v</sub>T</span> + <sup>1</sup>&frasl;<sub>2</sub><span class="math-var">u</span><sup>2</sup>) = <span class="math-var">p</span> / (&gamma;-1) + <sup>1</sup>&frasl;<sub>2</sub>&rho;<span class="math-var">u</span><sup>2</sup>
+</p>
+<p>其中 &rho; 是密度，<span class="math-var">u</span> 是速度，<span class="math-var">p</span> 是压力，<span class="math-var">e</span> 是单位质量内能，<span class="math-var">T</span> 是温度，<span class="math-var">C<sub>v</sub></span> 是定容比热，&gamma; 是绝热指数 (对于理想气体，通常取 &gamma; = 1.4)。</p>
+
+<h2>初始条件 (t=0)</h2>
+<table>
+    <thead>
+        <tr>
+            <th>位置</th>
+            <th>密度 (&rho;)</th>
+            <th>速度 (<span class="math-var">u</span>)</th>
+            <th>压力 (<span class="math-var">p</span>)</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><span class="math-var">x</span> &lt; 0 (左状态, L)</td>
+            <td>1.0</td>
+            <td>0.0</td>
+            <td>1.0</td>
+        </tr>
+        <tr>
+            <td><span class="math-var">x</span> &ge; 0 (右状态, R)</td>
+            <td>0.125</td>
+            <td>0.0</td>
+            <td>0.1</td>
+        </tr>
+    </tbody>
+</table>
+<p>我们将使用 &gamma; = 1.4。</p>
+
+<h2>波的结构</h2>
+<p>由于 <span class="math-var">p<sub>L</sub></span> &gt; <span class="math-var">p<sub>R</sub></span> (1.0 &gt; 0.1)，初始间断将分解为一个向左传播的稀疏波 (Rarefaction Wave)，一个接触间断 (Contact Discontinuity)，以及一个向右传播的激波 (Shock Wave)。</p>
+<p>结构 (从左到右): <code>L &rarr; 稀疏波 &rarr; *L &rarr; 接触间断 &rarr; *R &rarr; 激波 &rarr; R</code></p>
+<p>其中 *L 和 *R 是由波分开的中间状态（星区）。跨过接触间断，压力和速度连续：</p>
+<p style="text-align:center;">
+    <span class="math-var">p<sub>*L</sub></span> = <span class="math-var">p<sub>*R</sub></span> = <span class="math-var">p</span><sub>*</sub> <br>
+    <span class="math-var">u<sub>*L</sub></span> = <span class="math-var">u<sub>*R</sub></span> = <span class="math-var">u</span><sub>*</sub>
+</p>
+
+<h2>1. 计算初始状态的声速</h2>
+<p>声速 <span class="math-var">a</span> = &radic;(&gamma;<span class="math-var">p</span>/&rho;)</p>
+<ul>
+    <li><span class="math-var">a<sub>L</sub></span> = &radic;(1.4 * 1 / 1) = &radic;1.4 &approx; 1.183216</li>
+    <li><span class="math-var">a<sub>R</sub></span> = &radic;(1.4 * 0.1 / 0.125) = &radic;1.12 &approx; 1.058301</li>
+</ul>
+
+<h2>2. 求解星区压力 <span class="math-var">p</span><sub>*</sub> 和速度 <span class="math-var">u</span><sub>*</sub></h2>
+<p>这通过求解一个关于 <span class="math-var">p</span><sub>*</sub> 的非线性方程得到。对于Sod问题，其精确解（或高精度数值解）为：</p>
+<ul>
+    <li><span class="math-var">p</span><sub>*</sub> &approx; 0.303130178</li>
+    <li><span class="math-var">u</span><sub>*</sub> &approx; 0.927452620</li>
+</ul>
+<p>关系式如下：</p>
+<p>对于左行稀疏波 (<span class="math-var">p</span><sub>*</sub> &lt; <span class="math-var">p<sub>L</sub></span>):</p>
+<p style="text-align:center;">
+<span class="math-var">u</span><sub>*</sub> = <span class="math-var">u<sub>L</sub></span> - (2<span class="math-var">a<sub>L</sub></span> / (&gamma;-1)) * [ (<span class="math-var">p</span><sub>*</sub>/<span class="math-var">p<sub>L</sub></span>)<sup>((&gamma;-1)/(2&gamma;))</sup> - 1 ]
+</p>
+<p>对于右行激波 (<span class="math-var">p</span><sub>*</sub> &gt; <span class="math-var">p<sub>R</sub></span>):</p>
+<p style="text-align:center;">
+<span class="math-var">u</span><sub>*</sub> = <span class="math-var">u<sub>R</sub></span> + (<span class="math-var">p</span><sub>*</sub> - <span class="math-var">p<sub>R</sub></span>) * &radic;[ (2 / &rho;<sub>R</sub>) / ((&gamma;+1)<span class="math-var">p</span><sub>*</sub> + (&gamma;-1)<span class="math-var">p<sub>R</sub></span>) ]
+</p>
+
+<h2>3. 计算星区密度</h2>
+<h3>区域 *L (稀疏波后，接触间断左侧)</h3>
+<p>稀疏波是等熵过程: <span class="math-var">p</span> / &rho;<sup>&gamma;</sup> = const</p>
+<p style="text-align:center;">
+&rho;<sub>*L</sub> = &rho;<sub>L</sub> * (<span class="math-var">p</span><sub>*</sub>/<span class="math-var">p<sub>L</sub></span>)<sup>(1/&gamma;)</sup> = 1 * (0.303130178 / 1)<sup>(1/1.4)</sup> &approx; 0.426319
+</p>
+
+<h3>区域 *R (激波后，接触间断右侧)</h3>
+<p>使用Rankine-Hugoniot关系式 (激波关系):</p>
+<p style="text-align:center;">
+&rho;<sub>*R</sub> = &rho;<sub>R</sub> * [ ( ((&gamma;+1)/(&gamma;-1)) * (<span class="math-var">p</span><sub>*</sub>/<span class="math-var">p<sub>R</sub></span>) + 1 ) / ( ((&gamma;+1)/(&gamma;-1)) + <span class="math-var">p</span><sub>*</sub>/<span class="math-var">p<sub>R</sub></span> ) ]
+</p>
+<p>已知 ((&gamma;+1)/(&gamma;-1)) = (2.4/0.4) = 6，且 <span class="math-var">p</span><sub>*</sub>/<span class="math-var">p<sub>R</sub></span> = 0.303130178 / 0.1 = 3.03130178</p>
+<p style="text-align:center;">
+&rho;<sub>*R</sub> = 0.125 * [ (6 * 3.03130178 + 1) / (6 + 3.03130178) ] &approx; 0.265574
+</p>
+
+<h2>4. 计算波速</h2>
+<ul>
+    <li><strong>稀疏波头部速度 (S<sub>HL</sub>):</strong>
+        <span class="math-var">S<sub>HL</sub></span> = <span class="math-var">u<sub>L</sub></span> - <span class="math-var">a<sub>L</sub></span> = 0 - 1.183216 &approx; -1.183216
+    </li>
+    <li><strong>稀疏波尾部速度 (S<sub>TL</sub>):</strong>
+        首先计算 <span class="math-var">a<sub>*L</sub></span> = &radic;(&gamma;<span class="math-var">p</span><sub>*</sub>/&rho;<sub>*L</sub>) = &radic;(1.4 * 0.303130178 / 0.426319) &approx; 0.998324<br>
+        <span class="math-var">S<sub>TL</sub></span> = <span class="math-var">u</span><sub>*</sub> - <span class="math-var">a<sub>*L</sub></span> = 0.927452620 - 0.998324 &approx; -0.070871
+    </li>
+    <li><strong>接触间断速度 (S<sub>C</sub>):</strong>
+        <span class="math-var">S<sub>C</sub></span> = <span class="math-var">u</span><sub>*</sub> &approx; 0.927453
+    </li>
+    <li><strong>激波速度 (S<sub>S</sub>):</strong>
+        <span class="math-var">S<sub>S</sub></span> = <span class="math-var">u<sub>R</sub></span> + <span class="math-var">a<sub>R</sub></span> * &radic;[ ( ((&gamma;+1)/(2&gamma;)) * (<span class="math-var">p</span><sub>*</sub>/<span class="math-var">p<sub>R</sub></span>) + ((&gamma;-1)/(2&gamma;)) ) ]<br>
+        <span class="math-var">S<sub>S</sub></span> = 0 + 1.058301 * &radic;[ ((2.4/2.8) * 3.03130178 + (0.4/2.8)) ] &approx; 1.752156
+    </li>
+</ul>
+
+<h2>5. 稀疏波内部的解</h2>
+<p>在稀疏波扇形区域 (<span class="math-var">S<sub>HL</sub>t</span> &le; <span class="math-var">x</span> &le; <span class="math-var">S<sub>TL</sub>t</span>)，解是自相似的，依赖于 &xi; = <span class="math-var">x/t</span>。</p>
+<ul>
+    <li><span class="math-var">u</span>(&xi;) = ( (&gamma;-1)<span class="math-var">u<sub>L</sub></span> + 2<span class="math-var">a<sub>L</sub></span> + 2&xi; ) / (&gamma;+1) = (2<span class="math-var">a<sub>L</sub></span> + 2&xi;) / (&gamma;+1) = (2 * 1.183216 + 2&xi;) / 2.4</li>
+    <li><span class="math-var">a</span>(&xi;) = ( (&gamma;-1)(<span class="math-var">u<sub>L</sub></span> - &xi;) + 2<span class="math-var">a<sub>L</sub></span> ) / (&gamma;+1) = ( -(&gamma;-1)&xi; + 2<span class="math-var">a<sub>L</sub></span> ) / (&gamma;+1) = (-0.4&xi; + 2 * 1.183216) / 2.4</li>
+    <li>&rho;(&xi;) = &rho;<sub>L</sub> * (<span class="math-var">a</span>(&xi;)/<span class="math-var">a<sub>L</sub></span>)<sup>(2/(&gamma;-1))</sup> = 1 * (<span class="math-var">a</span>(&xi;)/1.183216)<sup>5</sup></li>
+    <li><span class="math-var">p</span>(&xi;) = <span class="math-var">p<sub>L</sub></span> * (<span class="math-var">a</span>(&xi;)/<span class="math-var">a<sub>L</sub></span>)<sup>(2&gamma;/(&gamma;-1))</sup> = 1 * (<span class="math-var">a</span>(&xi;)/1.183216)<sup>7</sup></li>
+</ul>
+
+<h2>6. 精确解总结 (在 <span class="math-var">t</span> 时刻)</h2>
+<p>令 &xi; = <span class="math-var">x/t</span>。</p>
+<table>
+    <thead>
+        <tr>
+            <th>区域</th>
+            <th>条件 (&xi; = <span class="math-var">x/t</span>)</th>
+            <th>&rho; (密度)</th>
+            <th><span class="math-var">u</span> (速度)</th>
+            <th><span class="math-var">p</span> (压力)</th>
+            <th><span class="math-var">E</span> (总能量)</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>1 (初始左状态)</td>
+            <td>&xi; &lt; <span class="math-var">S<sub>HL</sub></span> &approx; -1.183216</td>
+            <td>1.0</td>
+            <td>0.0</td>
+            <td>1.0</td>
+            <td>2.5</td>
+        </tr>
+        <tr>
+            <td>2 (稀疏波扇)</td>
+            <td><span class="math-var">S<sub>HL</sub></span> &le; &xi; &le; <span class="math-var">S<sub>TL</sub></span> &approx; -0.070871</td>
+            <td>&rho;(&xi;) (见上文)</td>
+            <td><span class="math-var">u</span>(&xi;) (见上文)</td>
+            <td><span class="math-var">p</span>(&xi;) (见上文)</td>
+            <td><span class="math-var">p</span>(&xi;)/0.4 + 0.5&rho;(&xi;)<span class="math-var">u</span>(&xi;)<sup>2</sup></td>
+        </tr>
+        <tr>
+            <td>3 (星区左, *L)</td>
+            <td><span class="math-var">S<sub>TL</sub></span> &lt; &xi; &lt; <span class="math-var">S<sub>C</sub></span> &approx; 0.927453</td>
+            <td>&rho;<sub>*L</sub> &approx; 0.426319</td>
+            <td><span class="math-var">u</span><sub>*</sub> &approx; 0.927453</td>
+            <td><span class="math-var">p</span><sub>*</sub> &approx; 0.303130</td>
+            <td>&approx; 0.941175</td>
+        </tr>
+        <tr>
+            <td>4 (星区右, *R)</td>
+            <td><span class="math-var">S<sub>C</sub></span> &lt; &xi; &lt; <span class="math-var">S<sub>S</sub></span> &approx; 1.752156</td>
+            <td>&rho;<sub>*R</sub> &approx; 0.265574</td>
+            <td><span class="math-var">u</span><sub>*</sub> &approx; 0.927453</td>
+            <td><span class="math-var">p</span><sub>*</sub> &approx; 0.303130</td>
+            <td>&approx; 0.872045</td>
+        </tr>
+        <tr>
+            <td>5 (初始右状态)</td>
+            <td>&xi; &gt; <span class="math-var">S<sub>S</sub></span> &approx; 1.752156</td>
+            <td>0.125</td>
+            <td>0.0</td>
+            <td>0.1</td>
+            <td>0.25</td>
+        </tr>
+    </tbody>
+</table>
+<p>注：区域3和4的 <span class="math-var">E</span> 计算公式为 <span class="math-var">p</span><sub>*</sub>/(&gamma;-1) + 0.5&rho;<sub>*</sub><span class="math-var">u</span><sub>*</sub><sup>2</sup>，使用各自的密度 &rho;<sub>*L</sub> 或 &rho;<sub>*R</sub>。</p>
+<ul>
+    <li><span class="math-var">E<sub>*L</sub></span> = 0.303130178 / 0.4 + 0.5 * 0.426319 * (0.927452620)<sup>2</sup> &approx; 0.757825 + 0.183350 &approx; 0.941175</li>
+    <li><span class="math-var">E<sub>*R</sub></span> = 0.303130178 / 0.4 + 0.5 * 0.265574 * (0.927452620)<sup>2</sup> &approx; 0.757825 + 0.114220 &approx; 0.872045</li>
+</ul>
+
+<h2>7. 守恒量 <span class="vector">U</span> 和 通量 <span class="vector">f(U)</span></h2>
+<p>对于每个区域 (除了稀疏波扇区，其中变量是 &xi; 的函数)，守恒量 <span class="vector">U</span> 和通量 <span class="vector">f(U)</span> 可以根据该区域的 &rho;, <span class="math-var">u</span>, <span class="math-var">p</span>, <span class="math-var">E</span> 计算得到。</p>
+<p>例如，在区域 *L (区域3):</p>
+<ul>
+    <li>&rho; &approx; 0.426319</li>
+    <li><span class="math-var">u</span> &approx; 0.927453</li>
+    <li><span class="math-var">p</span> &approx; 0.303130</li>
+    <li><span class="math-var">E</span> &approx; 0.941175</li>
+</ul>
+<pre>
+<span class="vector">U</span><sub>3</sub> = [       0.426319       ]
+    [ 0.426319 * 0.927453 ]  =  [ 0.395360 ]
+    [       0.941175       ]     [ 0.941175 ]
+
+<span class="vector">f(U</span><sub>3</sub><span class="vector">)</span> = [        0.395360         ]   =   [         0.395360         ]
+       [ 0.395360*0.927453 + 0.303130 ]       [ 0.366669 + 0.303130 ]   =   [ 0.669799 ]
+       [ 0.927453*(0.941175+0.303130) ]       [ 0.927453*1.244305  ]       [ 1.154191 ]
+</pre>
+
+<p>稀疏波扇内部的 <span class="vector">U</span>(&xi;) 和 <span class="vector">f(U</span>(&xi;)) 需要使用 &rho;(&xi;), <span class="math-var">u</span>(&xi;), <span class="math-var">p</span>(&xi;) 和 <span class="math-var">E</span>(&xi;) 的表达式来计算。</p>
+
+</div>
+</body>
+</html>

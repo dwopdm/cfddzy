@@ -1,3 +1,3 @@
-
+Code67.py中TVD使用限制器minmod和superbee，FDS使用Roe， FVS使用了VanLeer，WENO5,GVC使用GVC2
 总结来说，FDS方法比FVS精度更高，
 exact实现了精确解在任何给定条件下的求解
